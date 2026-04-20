@@ -9,7 +9,7 @@ st.set_page_config(page_title="Talotekniikan Energiatyökalu", layout="wide")
 # Sivuvalikko
 st.sidebar.title("Valitse työkalu")
 tyokalu = st.sidebar.radio("Työkalut:", 
-    ["LTO-vikalaskuri", "Puhallinmuutos", "Vuotava venttiili", "SFP-laskuri", "Osatehokäyttö (Puhallinlait)"])
+    ["LTO-vikalaskuri", "Puhallinmuutos", "Vuotava venttiili", "SFP-laskuri", "Osatehokäyttö"])
 
 # ==========================================
 # 1. LTO-VIKALASKURI
@@ -19,13 +19,13 @@ if tyokalu == "LTO-vikalaskuri":
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        ilmavirta = st.number_input("Tuloilmavirta (m³/s)", min_value=0.0, value=2.5, step=0.1)
+        ilmavirta = st.number_input("Tuloilmavirta (m³/s)", min_value=0.0, value=2.5, step=0.1, format="%.1f")
     with col2:
-        ulko_t = st.number_input("Ulkolämpötila nyt (°C)", value=-5.0)
-        tulo_t = st.number_input("Tuloilman asetus (°C)", value=19.0)
+        ulko_t = st.number_input("Ulkolämpötila nyt (°C)", value=-5.0, step=1.0, format="%.1f")
+        tulo_t = st.number_input("Tuloilman asetus (°C)", value=19.0, step=1.0, format="%.1f")
     with col3:
         energia_tyyppi = st.radio("Lämmitystapa:", ["Kaukolämpö", "Sähkö"])
-        hinta = st.number_input("Hinta (€/kWh)", min_value=0.0, value=0.10 if energia_tyyppi == "Kaukolämpö" else 0.20)
+        hinta = st.number_input("Hinta (€/kWh)", min_value=0.0, value=0.10 if energia_tyyppi == "Kaukolämpö" else 0.20, step=0.01, format="%.2f")
 
     dt = max(0, tulo_t - ulko_t)
     teho_kw = ilmavirta * 1.2 * 1.0 * dt
@@ -60,8 +60,8 @@ elif tyokalu == "Puhallinmuutos":
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Puhaltimien tiedot")
-        p_vanha = st.number_input("Vanhan puhaltimen ottoteho (kW)", min_value=0.0, value=5.5)
-        p_uusi = st.number_input("Uuden EC-puhaltimen ottoteho (kW)", min_value=0.0, value=3.0)
+        p_vanha = st.number_input("Vanhan puhaltimen ottoteho (kW)", min_value=0.0, value=5.5, step=0.1, format="%.1f")
+        p_uusi = st.number_input("Uuden EC-puhaltimen ottoteho (kW)", min_value=0.0, value=3.0, step=0.1, format="%.1f")
         
         st.subheader("Koneen käyttöaika")
         kaytto_tapa = st.selectbox("Valitse käyttöprofiili:", ["Jatkuva 24/7 (8760 h/v)", "Päiväkäyttö (esim. toimistot/koulut)", "Syötä vuosittaiset tunnit käsin"])
@@ -71,17 +71,17 @@ elif tyokalu == "Puhallinmuutos":
             st.caption("Kone on aina päällä (esim. asuinkerrostalot, sairaalat).")
         elif kaytto_tapa == "Päiväkäyttö (esim. toimistot/koulut)":
             c_h, c_d = st.columns(2)
-            tunnit_pv = c_h.number_input("Tuntia / vuorokausi", min_value=1, max_value=24, value=12)
-            paivat_vko = c_d.number_input("Päivää / viikko", min_value=1, max_value=7, value=5)
+            tunnit_pv = c_h.number_input("Tuntia / vuorokausi", min_value=1, max_value=24, value=12, step=1)
+            paivat_vko = c_d.number_input("Päivää / viikko", min_value=1, max_value=7, value=5, step=1)
             tunnit = tunnit_pv * paivat_vko * 52
             st.success(f"Laskennalliset käyntitunnit yhteensä: **{tunnit} tuntia vuodessa**")
         else:
-            tunnit = st.number_input("Käyntitunnit (h/vuosi)", min_value=1, value=4000)
+            tunnit = st.number_input("Käyntitunnit (h/vuosi)", min_value=1, value=4000, step=100)
             
     with col2:
         st.subheader("Investointi ja tarkastelu")
-        investointi = st.number_input("Investoinnin hinta (€)", min_value=0.0, value=4000.0)
-        sahko_hinta = st.number_input("Sähkön hinta (€/kWh)", min_value=0.0, value=0.15)
+        investointi = st.number_input("Investoinnin hinta (€)", min_value=0.0, value=4000.0, step=500.0, format="%.0f")
+        sahko_hinta = st.number_input("Sähkön hinta (€/kWh)", min_value=0.0, value=0.15, step=0.01, format="%.2f")
         arviointi_aika = st.slider("Tarkastelujakso (Vuosia)", 1, 25, 5)
 
     vuosi_saasto_eur = (p_vanha - p_uusi) * tunnit * sahko_hinta
@@ -144,11 +144,11 @@ elif tyokalu == "Vuotava venttiili":
     col1, col2 = st.columns(2)
     with col1:
         vuoto_tyyppi = st.radio("Mikä venttiili vuotaa?", ["Lämmitysventtiili", "Jäähdytysventtiili"])
-        qv = st.number_input("Ilmavirta (m³/s)", min_value=0.0, value=2.0)
-        leak_dt = st.number_input("Vuodon lämpötilamuutos ilmassa (°C)", min_value=0.0, value=3.0)
+        qv = st.number_input("Ilmavirta (m³/s)", min_value=0.0, value=2.0, step=0.1, format="%.1f")
+        leak_dt = st.number_input("Vuodon lämpötilamuutos ilmassa (°C)", min_value=0.0, value=3.0, step=0.5, format="%.1f")
     with col2:
-        h_hinta = st.number_input("Lämmityksen hinta (€/kWh)", min_value=0.0, value=0.10)
-        c_hinta = st.number_input("Jäähdytyksen hinta (€/kWh)", min_value=0.0, value=0.15)
+        h_hinta = st.number_input("Lämmityksen hinta (€/kWh)", min_value=0.0, value=0.10, step=0.01, format="%.2f")
+        c_hinta = st.number_input("Jäähdytyksen hinta (€/kWh)", min_value=0.0, value=0.15, step=0.01, format="%.2f")
 
     teho_kw = qv * 1.2 * 1.0 * leak_dt
     kk_hukka_kwh = teho_kw * 24 * 30
@@ -174,8 +174,8 @@ elif tyokalu == "SFP-laskuri":
     
     col1, col2 = st.columns(2)
     with col1:
-        p_summa = st.number_input("Puhaltimien yhteisteho (kW)", min_value=0.0, value=4.5)
-        qv_max = st.number_input("Suurin ilmavirta (m³/s)", min_value=0.0, value=2.5)
+        p_summa = st.number_input("Puhaltimien yhteisteho (kW)", min_value=0.0, value=4.5, step=0.1, format="%.1f")
+        qv_max = st.number_input("Suurin ilmavirta (m³/s)", min_value=0.0, value=2.5, step=0.1, format="%.1f")
     
     if qv_max > 0:
         sfp = p_summa / qv_max
@@ -201,16 +201,16 @@ elif tyokalu == "SFP-laskuri":
 # ==========================================
 # 5. OSATEHOKÄYTTÖ (PUHALLINLAIT)
 # ==========================================
-elif tyokalu == "Osatehokäyttö (Puhallinlait)":
+elif tyokalu == "Osatehokäyttö":
     st.title("Osatehokäyttö: Säästöpotentiaali")
     
     col1, col2 = st.columns(2)
     with col1:
-        p_nimellinen = st.number_input("Teho 100% ilmavirralla (kW)", min_value=0.0, value=5.0)
+        p_nimellinen = st.number_input("Teho 100% ilmavirralla (kW)", min_value=0.0, value=5.0, step=0.1, format="%.1f")
         pudotus_prosentti = st.slider("Ilmavirran pudotus osateholla (%)", 0, 50, 20, help="Esimerkiksi yöaikaan tai viikonloppuisin tehtävä osatehoajo.")
     with col2:
-        tunnit_vrk = st.number_input("Osatehoajon kesto (t/vrk)", min_value=1, max_value=24, value=12)
-        hinta = st.number_input("Sähkön hinta (€/kWh)", min_value=0.0, value=0.15)
+        tunnit_vrk = st.number_input("Osatehoajon kesto (t/vrk)", min_value=1, max_value=24, value=12, step=1)
+        hinta = st.number_input("Sähkön hinta (€/kWh)", min_value=0.0, value=0.15, step=0.01, format="%.2f")
 
     uusi_nopeus_suhde = (100 - pudotus_prosentti) / 100
     uusi_teho = p_nimellinen * (uusi_nopeus_suhde**3)
