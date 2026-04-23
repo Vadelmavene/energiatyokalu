@@ -238,6 +238,7 @@ elif tyokalu == "Osatehokäyttö":
 
     with st.expander("💼 Sisäinen muistio"):
         st.info("Osatehokäyttö (nopeuden pudotus) leikkaaa tehonkulutusta radikaalisti eksponentiaalisen suhteen vuoksi.")
+
 # ==========================================
 # 6. LTO-UUSINTA (HYÖTYSUHTEEN NOSTO)
 # ==========================================
@@ -249,11 +250,10 @@ elif tyokalu == "LTO-uusinta (Hyötysuhde)":
     with col1:
         st.subheader("Koneen tiedot")
         qv = st.number_input("Ilmavirta (m³/s)", min_value=0.0, value=3.0, step=0.1, format="%.1f")
-        eta_vanha = st.number_input("Vanhan LTO hyötysuhde (%)", min_value=0, max_value=100, value=40, step=1, help="Neste-LTO yleensä 30-45%")
-        eta_uusi = st.number_input("Uuden LTO hyötysuhde (%)", min_value=0, max_value=100, value=80, step=1, help="Pyörivä LTO yleensä 75-85%")
+        eta_vanha = st.number_input("Vanhan LTO hyötysuhde (%)", min_value=0, max_value=100, value=40, step=1)
+        eta_uusi = st.number_input("Uuden LTO hyötysuhde (%)", min_value=0, max_value=100, value=80, step=1)
         
         st.subheader("Sijainti ja käyttö")
-        # Lisätään ammattimainen lämmitystarveluvun valinta
         sijainti = st.selectbox("Kohteen sijainti (Lämmitystarveluku S17):", 
                                 ["Helsinki/Etelä-Suomi (4000 Kd)", 
                                  "Jyväskylä/Keski-Suomi (4800 Kd)", 
@@ -265,7 +265,21 @@ elif tyokalu == "LTO-uusinta (Hyötysuhde)":
         elif "Oulu" in sijainti: s17 = 5500
         else: s17 = 6000
         
-        tunnit = st.number_input("Käyntitunnit (h/vuosi)", min_value=1, value=8760, step=100)
+        # UUSI: Älykäs käyttöaikavalikko
+        kaytto_tapa = st.selectbox("Valitse käyttöprofiili:", ["Jatkuva 24/7 (8760 h/v)", "Päiväkäyttö (esim. toimistot/koulut)", "Syötä vuosittaiset tunnit käsin"])
+        
+        if kaytto_tapa == "Jatkuva 24/7 (8760 h/v)":
+            tunnit = 8760
+            st.caption("Kone on aina päällä (esim. asuinkerrostalot, sairaalat).")
+        elif kaytto_tapa == "Päiväkäyttö (esim. toimistot/koulut)":
+            c_h, c_d = st.columns(2)
+            # key-parametrit estävät Streamlitia sekoittamasta näitä Puhallinmuutoksen kenttiin
+            tunnit_pv = c_h.number_input("Tuntia / vuorokausi", min_value=1, max_value=24, value=12, step=1, key="lto_h")
+            paivat_vko = c_d.number_input("Päivää / viikko", min_value=1, max_value=7, value=5, step=1, key="lto_d")
+            tunnit = tunnit_pv * paivat_vko * 52
+            st.success(f"Laskennalliset käyntitunnit yhteensä: **{tunnit} tuntia vuodessa**")
+        else:
+            tunnit = st.number_input("Käyntitunnit (h/vuosi)", min_value=1, value=4000, step=100, key="lto_man")
 
     with col2:
         st.subheader("Investointi")
@@ -274,7 +288,6 @@ elif tyokalu == "LTO-uusinta (Hyötysuhde)":
         arviointi_aika = st.slider("Tarkastelujakso (Vuosia)", 1, 25, 10)
 
     # LASKENTA
-    # E_max = qv * 1.2 * 1.0 * (S17 * 24) * (tunnit / 8760)
     e_max_kwh = qv * 1.2 * 1.0 * (s17 * 24) * (tunnit / 8760)
     
     kulutus_vanha_kwh = e_max_kwh * (1 - (eta_vanha / 100))
