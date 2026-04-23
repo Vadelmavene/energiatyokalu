@@ -9,7 +9,7 @@ st.set_page_config(page_title="Talotekniikan Energiatyökalu", layout="wide")
 # Sivuvalikko
 st.sidebar.title("Valitse työkalu")
 tyokalu = st.sidebar.radio("Työkalut:", 
-    ["LTO-vikalaskuri", "Puhallinmuutos", "Vuotava venttiili", "SFP-laskuri", "Osatehokäyttö"])
+    ["LTO-vikalaskuri", "Puhallinmuutos", "Vuotava venttiili", "SFP-laskuri", "Osatehokäyttö (Puhallinlait)", "LTO-uusinta (Hyötysuhde)"])
 
 # ==========================================
 # 1. LTO-VIKALASKURI
@@ -238,3 +238,85 @@ elif tyokalu == "Osatehokäyttö":
 
     with st.expander("💼 Sisäinen muistio"):
         st.info("Osatehokäyttö (nopeuden pudotus) leikkaaa tehonkulutusta radikaalisti eksponentiaalisen suhteen vuoksi.")
+# ==========================================
+# 6. LTO-UUSINTA (HYÖTYSUHTEEN NOSTO)
+# ==========================================
+elif tyokalu == "LTO-uusinta (Hyötysuhde)":
+    st.title("LTO-uusinta: Investointilaskelma")
+    st.write("Laskee energiansäästön, kun vanha lämmöntalteenotto (esim. neste-LTO) vaihdetaan tehokkaampaan (esim. pyörivä LTO).")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Koneen tiedot")
+        qv = st.number_input("Ilmavirta (m³/s)", min_value=0.0, value=3.0, step=0.1, format="%.1f")
+        eta_vanha = st.number_input("Vanhan LTO hyötysuhde (%)", min_value=0, max_value=100, value=40, step=1, help="Neste-LTO yleensä 30-45%")
+        eta_uusi = st.number_input("Uuden LTO hyötysuhde (%)", min_value=0, max_value=100, value=80, step=1, help="Pyörivä LTO yleensä 75-85%")
+        
+        st.subheader("Sijainti ja käyttö")
+        # Lisätään ammattimainen lämmitystarveluvun valinta
+        sijainti = st.selectbox("Kohteen sijainti (Lämmitystarveluku S17):", 
+                                ["Helsinki/Etelä-Suomi (4000 Kd)", 
+                                 "Jyväskylä/Keski-Suomi (4800 Kd)", 
+                                 "Oulu/Pohjois-Pohjanmaa (5500 Kd)", 
+                                 "Rovaniemi/Lappi (6000 Kd)"])
+        
+        if "Helsinki" in sijainti: s17 = 4000
+        elif "Jyväskylä" in sijainti: s17 = 4800
+        elif "Oulu" in sijainti: s17 = 5500
+        else: s17 = 6000
+        
+        tunnit = st.number_input("Käyntitunnit (h/vuosi)", min_value=1, value=8760, step=100)
+
+    with col2:
+        st.subheader("Investointi")
+        investointi = st.number_input("Uudistuksen kokonaishinta (€)", min_value=0.0, value=35000.0, step=1000.0, format="%.0f")
+        h_hinta = st.number_input("Lämmitysenergian hinta (€/kWh)", min_value=0.0, value=0.10, step=0.01, format="%.2f")
+        arviointi_aika = st.slider("Tarkastelujakso (Vuosia)", 1, 25, 10)
+
+    # LASKENTA
+    # E_max = qv * 1.2 * 1.0 * (S17 * 24) * (tunnit / 8760)
+    e_max_kwh = qv * 1.2 * 1.0 * (s17 * 24) * (tunnit / 8760)
+    
+    kulutus_vanha_kwh = e_max_kwh * (1 - (eta_vanha / 100))
+    kulutus_uusi_kwh = e_max_kwh * (1 - (eta_uusi / 100))
+    
+    saasto_kwh_vuosi = kulutus_vanha_kwh - kulutus_uusi_kwh
+    saasto_eur_vuosi = saasto_kwh_vuosi * h_hinta
+    
+    roi = investointi / saasto_eur_vuosi if saasto_eur_vuosi > 0 else 0
+
+    st.divider()
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Vuotuinen säästö", f"{saasto_eur_vuosi:.0f} €", f"-{saasto_kwh_vuosi:.0f} kWh", delta_color="inverse")
+    c2.metric("Takaisinmaksuaika", f"{roi:.1f} vuotta")
+    c3.metric(f"Nettosäästö {arviointi_aika} vuodessa", f"{(saasto_eur_vuosi * arviointi_aika) - investointi:.0f} €", "Investointi vähennetty", delta_color="normal")
+
+    # GRAAFI
+    vuodet = np.arange(0, arviointi_aika + 1)
+    kulu_vanha = kulutus_vanha_kwh * h_hinta * vuodet
+    kulu_uusi = investointi + (kulutus_uusi_kwh * h_hinta * vuodet)
+    
+    df = pd.DataFrame({
+        "Vuosi": vuodet,
+        "Vanha LTO (Vain energia)": kulu_vanha,
+        "Uusi LTO (Energia + Investointi)": kulu_uusi
+    })
+    
+    fig = px.line(df, x="Vuosi", y=["Vanha LTO (Vain energia)", "Uusi LTO (Energia + Investointi)"], 
+                  labels={"value": "Kumulatiiviset kustannukset (€)", "variable": "Vaihtoehto"},
+                  color_discrete_map={"Vanha LTO (Vain energia)": "#d62728", "Uusi LTO (Energia + Investointi)": "#2ca02c"})
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("Näytä laskennan perusteet ja kaavat"):
+        st.markdown(r"""
+        **Teoreettinen maksimi lämmitysenergian tarve (ilman LTO:ta):**
+        $E_{max} = q_v \cdot \rho \cdot c_p \cdot (S17 \cdot 24) \cdot \left(\frac{t}{8760}\right)$
+        * $S17$ = Sijainnin lämmitystarveluku
+        * $t$ = Käyntitunnit vuodessa
+        
+        **LTO:n jälkeinen kulutus:**
+        $E_{kulutus} = E_{max} \cdot (1 - \eta)$
+        """)
+
+    with st.expander("💼 Sisäinen muistio"):
+        st.info(f"Kohteessa on iso säästöpotentiaali. LTO:n päivitys hyötysuhteesta {eta_vanha}% tasoon {eta_uusi}% säästää asiakkaalta {saasto_eur_vuosi:.0f} € vuodessa. Investointi maksaa itsensä takaisin {roi:.1f} vuodessa.")
