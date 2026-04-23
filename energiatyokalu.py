@@ -9,7 +9,7 @@ st.set_page_config(page_title="Talotekniikan Energiatyökalu", layout="wide")
 # Sivuvalikko
 st.sidebar.title("Valitse työkalu")
 tyokalu = st.sidebar.radio("Työkalut:", 
-    ["LTO-vikalaskuri", "Puhallinmuutos", "Vuotava venttiili", "SFP-laskuri", "Osatehokäyttö (Puhallinlait)", "LTO-uusinta (Hyötysuhde)"])
+    ["LTO-vikalaskuri", "Puhallinmuutos", "Vuotava venttiili", "SFP-laskuri", "Osatehokäyttö", "LTO-uusinta (Hyötysuhde)"])
 
 # ==========================================
 # 1. LTO-VIKALASKURI
